@@ -42,36 +42,71 @@ def divulgar(message):
     texto = "✨ Clube de Doramas Catálogo ✨\n\nVem comentar dorama com a gente no Telegram!\nLançamentos, indicações e surto coletivo 💜\n\nEntra aqui: https://t.me/+Ll9Js3HxCYk4ZjAx"
     bot.reply_to(message, texto)
 
+# callback dos planos + aprovar/recusar comprovante
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-    if call.data == "plano_1":
+    data = call.data
+
+    # aprovar / recusar comprovante
+    if data.startswith("aprovar_") or data.startswith("recusar_"):
+        if call.from_user.id not in ADMIN_IDS:
+            bot.answer_callback_query(call.id, "Só admin pode fazer isso")
+            return
+        _, user_id_str = data.split("_", 1)
+        user_id = int(user_id_str)
+        if data.startswith("aprovar_"):
+            try:
+                bot.send_message(user_id, "✅ Pagamento confirmado! Seu acesso foi liberado 💜\nObrigada!")
+                bot.answer_callback_query(call.id, "Aprovado e cliente avisada")
+                bot.edit_message_caption("✅ Aprovado", call.message.chat.id, call.message.message_id)
+            except Exception as e:
+                bot.answer_callback_query(call.id, f"Erro ao avisar cliente: {e}")
+        else:
+            try:
+                bot.send_message(user_id, "❌ Oi! Não consegui confirmar seu comprovante. Pode reenviar uma foto mais nítida, por favor?")
+                bot.answer_callback_query(call.id, "Recusado e cliente avisada")
+                bot.edit_message_caption("❌ Recusado", call.message.chat.id, call.message.message_id)
+            except Exception as e:
+                bot.answer_callback_query(call.id, f"Erro ao avisar cliente: {e}")
+        return
+
+    # planos
+    if data == "plano_1":
         text = f"1 Dorama - R$ 7\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nEnvie o comprovante aqui que eu libero seu dorama!"
-    elif call.data == "plano_3":
+    elif data == "plano_3":
         text = f"3 Doramas - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nEnvie o comprovante aqui que eu libero seus doramas!"
-    elif call.data == "plano_semanal":
+    elif data == "plano_semanal":
         text = f"Grupo Semanal - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante aqui que eu libero seu acesso!"
-    elif call.data == "plano_vitalicio":
+    elif data == "plano_vitalicio":
         text = f"Vitalício - R$ 40\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante aqui que eu libero seu acesso!"
     else:
         return
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     bot.answer_callback_query(call.id)
 
-# NOVO: recebe comprovante em foto ou PDF e te encaminha
+# recebe comprovante e encaminha pra admin com botões
 @bot.message_handler(content_types=['photo', 'document'])
 def receber_comprovante(message):
     user = message.from_user
     nome = user.first_name
-    username = f"@{user.username}" if user.username else nome
-    legenda = f"Comprovante de {username}\nid: {user.id}"
+    user_id = user.id
+
+    # nome clicável, funciona mesmo sem @
+    legenda = f"Comprovante de <a href='tg://user?id={user_id}'>{nome}</a>\nid: <code>{user_id}</code>"
+
+    markup = InlineKeyboardMarkup()
+    markup.add(
+        InlineKeyboardButton("✅ Aprovar", callback_data=f"aprovar_{user_id}"),
+        InlineKeyboardButton("❌ Recusar", callback_data=f"recusar_{user_id}")
+    )
 
     for admin_id in ADMIN_IDS:
         try:
             if message.content_type == 'photo':
                 file_id = message.photo[-1].file_id
-                bot.send_photo(admin_id, file_id, caption=legenda)
+                bot.send_photo(admin_id, file_id, caption=legenda, parse_mode="HTML", reply_markup=markup)
             else:
-                bot.send_document(admin_id, message.document.file_id, caption=legenda)
+                bot.send_document(admin_id, message.document.file_id, caption=legenda, parse_mode="HTML", reply_markup=markup)
         except Exception as e:
             print(f"Erro ao encaminhar pra {admin_id}: {e}")
 
