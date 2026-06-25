@@ -57,6 +57,26 @@ def callback(call):
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     bot.answer_callback_query(call.id)
 
+# NOVO: recebe comprovante em foto ou PDF e te encaminha
+@bot.message_handler(content_types=['photo', 'document'])
+def receber_comprovante(message):
+    user = message.from_user
+    nome = user.first_name
+    username = f"@{user.username}" if user.username else nome
+    legenda = f"Comprovante de {username}\nid: {user.id}"
+
+    for admin_id in ADMIN_IDS:
+        try:
+            if message.content_type == 'photo':
+                file_id = message.photo[-1].file_id
+                bot.send_photo(admin_id, file_id, caption=legenda)
+            else:
+                bot.send_document(admin_id, message.document.file_id, caption=legenda)
+        except Exception as e:
+            print(f"Erro ao encaminhar pra {admin_id}: {e}")
+
+    bot.reply_to(message, "Comprovante recebido! Vou conferir e liberar seu acesso em breve 💜")
+
 @bot.message_handler(content_types=['new_chat_members'])
 def welcome_new(message):
     for new_user in message.new_chat_members:
