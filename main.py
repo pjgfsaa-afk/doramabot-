@@ -1,30 +1,43 @@
 import os
 import telebot
-from telebot import types
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
+PIX_KEY = "63533394379"
+LINK_SEMANAL = "https://t.me/+xRGgHCCRMJUxYTdh"
+LINK_VITALICIO = "https://t.me/+3EY1hDlbtQ00YTBh"
+
+WELCOME_TEXT = "🌸 Bem vindo ao nosso grupo de Doramas!\n\nEscolha seu plano abaixo:"
+
+def get_menu():
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("1 Dorama - R$ 7", callback_data="plano_1"))
+    markup.add(InlineKeyboardButton("3 Doramas - R$ 10", callback_data="plano_3"))
+    markup.add(InlineKeyboardButton("Grupo Semanal - R$ 10", callback_data="plano_semanal"))
+    markup.add(InlineKeyboardButton("Vitalício - R$ 40", callback_data="plano_vitalicio"))
+    return markup
+
 @bot.message_handler(commands=['start'])
-def start(msg):
-    markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("1 DORAMA", callback_data="dorama1")
-    btn2 = types.InlineKeyboardButton("3 DORAMAS", callback_data="dorama3")
-    btn3 = types.InlineKeyboardButton("GRUPO SEMANAL", callback_data="semanal")
-    markup.add(btn1, btn2, btn3)
-    bot.send_message(msg.chat.id, "🌸 Bem-vinda ao Doramabot!", reply_markup=markup)
+def start(message):
+    bot.send_message(message.chat.id, WELCOME_TEXT, reply_markup=get_menu())
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    if call.data == "dorama1":
-        texto = "✅ 1 DORAMA\n\nColoque seu texto aqui"
-    elif call.data == "dorama3":
-        texto = "✅ 3 DORAMAS\n\nColoque seu texto aqui"
-    elif call.data == "semanal":
-        texto = "✅ GRUPO SEMANAL\n\nColoque seu texto aqui"
+def callback(call):
+    if call.data == "plano_1":
+        text = f"1 Dorama - R$ 7\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nEnvie o comprovante aqui que eu libero seu dorama!"
+    elif call.data == "plano_3":
+        text = f"3 Doramas - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nEnvie o comprovante aqui que eu libero seus doramas!"
+    elif call.data == "plano_semanal":
+        text = f"Grupo Semanal - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nLink do grupo:\n{LINK_SEMANAL}\n\nApós pagar, envie o comprovante!"
+    elif call.data == "plano_vitalicio":
+        text = f"Vitalício - R$ 40\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nLink do grupo:\n{LINK_VITALICIO}\n\nApós pagar, envie o comprovante!"
     else:
-        texto = "Opção não encontrada"
-    bot.send_message(call.message.chat.id, texto)
+        return
+    
+    bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     bot.answer_callback_query(call.id)
 
+print("Doramabot rodando...")
 bot.infinity_polling()
