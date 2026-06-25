@@ -6,8 +6,6 @@ TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 PIX_KEY = "63533394379"
-LINK_SEMANAL = "https://t.me/+xRGgHCCRMJUxYTdh"
-LINK_VITALICIO = "https://t.me/+3EY1hDlbtQ00YTBh"
 
 WELCOME_TEXT = "🌸 Bem vindo ao nosso grupo de Doramas!\n\nEscolha seu plano abaixo:"
 
@@ -30,9 +28,9 @@ def callback(call):
     elif call.data == "plano_3":
         text = f"3 Doramas - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nEnvie o comprovante aqui que eu libero seus doramas!"
     elif call.data == "plano_semanal":
-        text = f"Grupo Semanal - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nLink do grupo:\n{LINK_SEMANAL}\n\nApós pagar, envie o comprovante!"
+        text = f"Grupo Semanal - R$ 10\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante aqui que eu libero seu acesso!"
     elif call.data == "plano_vitalicio":
-        text = f"Vitalício - R$ 40\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nLink do grupo:\n{LINK_VITALICIO}\n\nApós pagar, envie o comprovante!"
+        text = f"Vitalício - R$ 40\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante aqui que eu libero seu acesso!"
     else:
         return
     
