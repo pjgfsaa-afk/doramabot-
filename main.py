@@ -53,38 +53,47 @@ def callback(call):
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     bot.answer_callback_query(call.id)
 
-# Boas-vindas no grupo
+# Boas-vindas no grupo - com marcação
 @bot.message_handler(content_types=['new_chat_members'])
 def welcome_new(message):
     for new_user in message.new_chat_members:
+        # ignora o próprio bot entrando
+        if new_user.id == bot.get_me().id:
+            continue
         nome = new_user.first_name
-        texto = f"🌸 Bem-vindo(a), {nome}!\n\nAproveita nossos doramas! Se precisar de ajuda, chama no privado @Doramabot"
-        bot.send_message(message.chat.id, texto)
+        uid = new_user.id
+        texto = f"🌸 Bem-vindo(a), <a href='tg://user?id={uid}'>{nome}</a>!\n\nEscolha seu plano abaixo:"
+        bot.send_message(message.chat.id, texto, parse_mode="HTML", reply_markup=get_menu())
 
 # Marca todo mundo - só a Pamela pode usar
+def do_tag(chat_id, aviso, message):
+    now = time.time()
+    if now - last_tag_time.get(chat_id, 0) < 300:
+        bot.reply_to(message, "Calma, espera 5 min pra marcar de novo.")
+        return False
+    last_tag_time[chat_id] = now
+
+    mentions = []
+    for uid, nome in list(known_users.items())[:50]:
+        mentions.append(f"<a href='tg://user?id={uid}'>{nome}</a>")
+
+    if mentions:
+        bot.send_message(chat_id, f"{aviso}\n\n{' '.join(mentions)}", parse_mode="HTML")
+    return True
+
 @bot.message_handler(content_types=['text'], func=lambda m: m.chat.type in ['group', 'supergroup'])
 def track_and_tag(message):
     uid = str(message.from_user.id)
     known_users[uid] = message.from_user.first_name
     save_users()
 
-    if message.text.startswith('/marcar'):
+    # /marcar e /anuncio fazem a mesma coisa, só muda o nome
+    if message.text.startswith('/marcar') or message.text.startswith('/anuncio'):
         if message.from_user.id not in ADMIN_IDS:
             return
         chat_id = message.chat.id
-        now = time.time()
-        if now - last_tag_time.get(chat_id, 0) < 300:
-            bot.reply_to(message, "Calma, espera 5 min pra marcar de novo.")
-            return
-        last_tag_time[chat_id] = now
-
-        aviso = message.text.replace('/marcar', '').strip() or "Atenção pessoal!"
-        mentions = []
-        for uid, nome in list(known_users.items())[:50]:
-            mentions.append(f"<a href='tg://user?id={uid}'>{nome}</a>")
-
-        if mentions:
-            bot.send_message(chat_id, f"{aviso}\n\n{' '.join(mentions)}", parse_mode="HTML")
+        aviso = message.text.replace('/marcar', '').replace('/anuncio', '').strip() or "Atenção pessoal!"
+        do_tag(chat_id, aviso, message)
 
 print("Doramabot rodando...")
 bot.infinity_polling()
