@@ -1,13 +1,30 @@
 import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import json
+import time
 
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 PIX_KEY = "63533394379"
+ADMIN_IDS = [8513977991] # Pamela
 
 WELCOME_TEXT = "🌸 Bem vindo ao nosso grupo de Doramas!\n\nEscolha seu plano abaixo:"
+
+# salva quem fala no grupo
+DB_FILE = "users.json"
+try:
+    with open(DB_FILE) as f:
+        known_users = json.load(f)
+except:
+    known_users = {}
+
+last_tag_time = {}
+
+def save_users():
+    with open(DB_FILE, "w") as f:
+        json.dump(known_users, f)
 
 def get_menu():
     markup = InlineKeyboardMarkup()
@@ -33,9 +50,41 @@ def callback(call):
         text = f"Vitalício - R$ 40\n\nChave Pix (CPF):\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante aqui que eu libero seu acesso!"
     else:
         return
-    
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     bot.answer_callback_query(call.id)
+
+# Boas-vindas no grupo
+@bot.message_handler(content_types=['new_chat_members'])
+def welcome_new(message):
+    for new_user in message.new_chat_members:
+        nome = new_user.first_name
+        texto = f"🌸 Bem-vindo(a), {nome}!\n\nAproveita nossos doramas! Se precisar de ajuda, chama no privado @Doramabot"
+        bot.send_message(message.chat.id, texto)
+
+# Marca todo mundo - só a Pamela pode usar
+@bot.message_handler(content_types=['text'], func=lambda m: m.chat.type in ['group', 'supergroup'])
+def track_and_tag(message):
+    uid = str(message.from_user.id)
+    known_users[uid] = message.from_user.first_name
+    save_users()
+
+    if message.text.startswith('/marcar'):
+        if message.from_user.id not in ADMIN_IDS:
+            return
+        chat_id = message.chat.id
+        now = time.time()
+        if now - last_tag_time.get(chat_id, 0) < 300:
+            bot.reply_to(message, "Calma, espera 5 min pra marcar de novo.")
+            return
+        last_tag_time[chat_id] = now
+
+        aviso = message.text.replace('/marcar', '').strip() or "Atenção pessoal!"
+        mentions = []
+        for uid, nome in list(known_users.items())[:50]:
+            mentions.append(f"<a href='tg://user?id={uid}'>{nome}</a>")
+
+        if mentions:
+            bot.send_message(chat_id, f"{aviso}\n\n{' '.join(mentions)}", parse_mode="HTML")
 
 print("Doramabot rodando...")
 bot.infinity_polling()
